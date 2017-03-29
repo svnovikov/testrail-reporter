@@ -1,9 +1,8 @@
 import os
+import xml.etree.ElementTree as xml
 
 import requests.packages.urllib3
 from testrail import *
-
-from parsexml import parse_xml
 
 requests.packages.urllib3.disable_warnings()
 
@@ -13,6 +12,21 @@ tr_milestone = os.environ.get('TESTRAIL_MILESTONE')
 tr_suite = os.environ.get('TESTRAIL_SUITE')
 tr_testplan = os.environ.get('TESTRAIL_PLAN')
 tr_testrun = os.environ.get('TESTRAIL_RUN', tr_suite)
+
+xml_path = os.environ.get('XML_PATH', 'nosetests.xml')
+
+
+def parse_xml():
+    tree = xml.parse(xml_path)
+    root = tree.getroot()
+
+    tcases = {}
+
+    for tc in root.iter('testcase'):
+        tc_info = tc.attrib
+        tcases[tc_info['name']] = tc_info['status']
+
+    return tcases
 
 
 def get_test_group(case):
