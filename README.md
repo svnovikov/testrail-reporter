@@ -1,20 +1,20 @@
 Purpose
 -------
 
-Repository contains scripts to report results in XML format to TestRail. Reporter gets info about tests from XML file and adds to TestRail run only these tests.
+Repository contains script to report results from XML file to TestRail. Only tests from XML will be added to run.
 
 Requirements
 ------------
 
 - python 2.7
-- [testrail library for python](https://github.com/travispavek/testrail-python)
+- [testrail-python](https://github.com/travispavek/testrail-python)
 
 Settings
 --------
 
 **Your XML file structure**
 
-Only test group (name) and status of test case is relevant for now. So here is an example:
+Only test group name and status of test case are significant to reporter for now:
 ```xml
 <xml>
   <testsuite errors='0' failures='0' skip='0' tests='7'>
@@ -24,7 +24,7 @@ Only test group (name) and status of test case is relevant for now. So here is a
 </xml>
 ```
 
-If status is '0', then the test will be marked as passed, if status is '1', then test will be marked as failed.
+By default `0` status is mapped to `passed` on TestRail, `1` is mapped to `failed` test.
 
 **Your TestRail settings**
 
@@ -43,11 +43,20 @@ export TESTRAIL_PLAN=       # name of the plan where to collect the run
 Optional environment variables:
 
 ```bash
-export XML_PATH=      # path to your XML file with test results
+export XML_PATH=      # path to your XML file with test results; default is 'nosetests.xml'
 export TESTRAIL_RUN=  # name of the run; by default is equal to test suite
 ```
 
 Start
 -----
 
-Use `python reporter.py` to add test results to TestRail.
+To run script which will add test results to TestRail, you may use:
+```bash
+python reporter.py
+```
+
+Logic of work
+-------------
+
+Script finds the suite in your TestRail project, then gets all cases from this suite and filters them to consider only those tests, which test groups are presented in your XML file. Then it finds test plan (or creates it if test plan which specified name doesn't exist) and finds or creates test run within the plan. Finally, it adds test results for the run.
+

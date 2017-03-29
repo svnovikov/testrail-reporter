@@ -2,7 +2,7 @@ import os
 import xml.etree.ElementTree as xml
 
 import requests.packages.urllib3
-from testrail import *
+from testrail import TestRail
 
 requests.packages.urllib3.disable_warnings()
 
@@ -20,7 +20,7 @@ def parse_xml():
     tree = xml.parse(xml_path)
     root = tree.getroot()
 
-    tcases = {}
+    tcases = {}  # map test group to test result
 
     for tc in root.iter('testcase'):
         tc_info = tc.attrib
@@ -29,24 +29,23 @@ def parse_xml():
     return tcases
 
 
-def get_test_group(case):
-    return case.raw_data().get('custom_test_group', '')
+def get_test_group(tr_case):
+    return tr_case.raw_data().get('custom_test_group', '')
 
 
 class Reporter:
     def __init__(self, project_name, milestone_name, suite_name, plan_name,
                  run_name, cases_xml):
-        self.project_id = None
-        self.tr_project = None
-        self.project = self.init_project(project_name)
+        self.project = None
+        self.tr_project = self.init_project(project_name)
         self.milestone = self.find_milestone(milestone_name)
 
         self.suite = self.find_suite(suite_name)
         self.cases = self.tr_project.cases(self.suite)
         self.filter_cases(cases_xml)
 
-        self.plan = self.get_or_create_plan(plan_name)
-        self.run = self.get_or_create_test_run(run_name)
+        self.plan = self.find_or_create_plan(plan_name)
+        self.run = self.find_or_create_test_run(run_name)
 
         self.statuses = {
             '0': self.tr_project.status('passed'),
@@ -56,13 +55,13 @@ class Reporter:
         self.add_results(cases_xml)
 
     def init_project(self, project_name):
-        self.tr_project = TestRail()
+        project = TestRail()
 
-        for p in self.tr_project.projects():
+        for p in project.projects():
             if p.name == project_name:
-                self.tr_project.set_project_id(p.id)
-                self.project_id = p.id
-                return p
+                project.set_project_id(p.id)
+		self.project = p
+                return project
 
         raise Exception('Project "{}" not found.'.format(project_name))
 
@@ -83,8 +82,8 @@ class Reporter:
                       if get_test_group(case) in cases_xml.keys()]
         return self
 
-    def get_or_create_plan(self, plan_name):
-        """Get existing or create new TestRail Plan."""
+    def find_or_create_plan(self, plan_name):
+        """Find existing or create new TestRail Plan."""
         plans = self.tr_project.plans()
         for p in plans:
             if p.name == plan_name:
@@ -100,8 +99,8 @@ class Reporter:
             print 'Plan {} is created'.format(plan_name)
         return plan
 
-    def get_or_create_test_run(self, run_name):
-        """Get existing or create new TestRail Run."""
+    def find_or_create_test_run(self, run_name):
+        """Find existing or create new TestRail Run."""
         runs = []
         for r in self.plan.entries:
             runs += r.runs
@@ -117,7 +116,7 @@ class Reporter:
                 'suite_id': self.suite.id,
                 'include_all': False,
                 'case_ids': [_.id for _ in self.cases],
-                'project_id': self.project_id,
+                'project_id': self.project.id,
                 'milestone_id': self.milestone.id,
                 'plan_id': self.plan.id
             }
@@ -144,5 +143,8 @@ class Reporter:
             self.tr_project.add(result)
 
 
-tc = parse_xml()
-p = Reporter(tr_project, tr_milestone, tr_suite, tr_testplan, tr_testrun, tc)
+if __name__ == __main__:
+    tc = parse_xml()
+    p = Reporter(tr_project, tr_milestone, tr_suite, tr_testplan,
+                 tr_testrun, tc)
+
