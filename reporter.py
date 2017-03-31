@@ -60,7 +60,7 @@ class Reporter:
         for p in project.projects():
             if p.name == project_name:
                 project.set_project_id(p.id)
-		self.project = p
+                self.project = p
                 return project
 
         raise Exception('Project "{}" not found.'.format(project_name))
@@ -121,7 +121,7 @@ class Reporter:
                 'plan_id': self.plan.id
             }
             run = self.plan.api.add_plan_entry(entry)
-            run = self.tr_project.api.get_run(run['id'])
+            run = self.plan.api.get_run(run['id'])
             print 'Run {} is created'.format(run_name)
         return run
 
@@ -143,8 +143,8 @@ class Reporter:
             self.tr_project.add(result)
 
 
-if __name__ == __main__:
+if __name__ == '__main__':
     tc = parse_xml()
     p = Reporter(tr_project, tr_milestone, tr_suite, tr_testplan,
                  tr_testrun, tc)
-
+    print('[TestRun URL] {}'.format(p.run.url))

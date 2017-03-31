@@ -58,5 +58,5 @@ python reporter.py
 Logic of work
 -------------
 
-Script finds the suite in your TestRail project, then gets all cases from this suite and filters them to consider only those tests, which test groups are presented in your XML file. Then it finds test plan (or creates it if test plan which specified name doesn't exist) and finds or creates test run within the plan. Finally, it adds test results for the run.
+Script finds the suite in your TestRail project, then gets all cases from this suite and filters them to consider only those tests, which test groups are presented in your XML file. Then it finds test plan (or creates it if test plan whith specified name doesn't exist) and finds or creates test run within the plan. Finally, it adds test results for the run.
 
