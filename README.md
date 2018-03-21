@@ -18,8 +18,8 @@ Only test group name and status of test case are significant to reporter for now
 ```xml
 <xml>
   <testsuite errors='0' failures='0' skip='0' tests='7'>
-    <testcase name='your_test_group_is_here' status='0' />
-    <testcase name='your_another_test_group_is_here' status='0' />
+    <testcase name='your_test_group_is_here'/>
+    <testcase name='your_another_test_group_is_here'/>
   </testsuite>
 </xml>
 ```

@@ -23,8 +23,15 @@ def parse_xml():
     tcases = {}  # map test group to test result
 
     for tc in root.iter('testcase'):
-        tc_info = tc.attrib
-        tcases[tc_info['name']] = tc_info['status']
+        tc_attrs = tc.attrib
+        status = tc.getchildren()
+        if not status:
+            status = {'passed': ''}
+        elif 'skipped' in status[0].__str__():
+            status = {'skipped': status[0].text}
+        else:
+            status = {'failed': status[0].text}
+        tcases[tc_attrs['name']] = status
 
     return tcases
 
@@ -44,60 +51,53 @@ class Reporter:
         self.cases = self.tr_project.cases(self.suite)
         self.filter_cases(cases_xml)
 
-        self.plan = self.find_or_create_plan(plan_name)
+        self.plan = self.find_plan(plan_name)
         self.run = self.find_or_create_test_run(run_name)
-
-        self.statuses = {
-            '0': self.tr_project.status('passed'),
-            '1': self.tr_project.status('failed')
-        }
 
         self.add_results(cases_xml)
 
     def init_project(self, project_name):
         project = TestRail()
-
-        for p in project.projects():
-            if p.name == project_name:
-                project.set_project_id(p.id)
-                self.project = p
+        for prj in project.projects():
+            if prj.name == project_name:
+                project.set_project_id(prj.id)
+                self.project = prj
                 return project
-
-        raise Exception('Project "{}" not found.'.format(project_name))
+        raise Exception('Project "{}" is not found.'.format(project_name))
 
     def find_suite(self, suite_name):
-        for s in self.tr_project.suites():
-            if s.name == suite_name:
-                return s
+        for suite in self.tr_project.suites():
+            if suite.name == suite_name:
+                return suite
+        raise Exception('The test suite {} is not found'.format(suite_name))
 
     def find_milestone(self, milestone_name):
         for m in self.tr_project.milestones():
             if m.name == milestone_name:
                 return m
-        raise Exception('Milestone {} not found'.format(milestone_name))
+        raise Exception('Milestone {} is not found'.format(milestone_name))
 
     def filter_cases(self, cases_xml):
         """Leave only those tests which are in xml."""
-        self.cases = [case for case in self.cases
-                      if get_test_group(case) in cases_xml.keys()]
-        return self
+        testrail_cases = [get_test_group(case) for case in self.cases]
+        xml_cases = cases_xml.keys()
+        cases = filter(lambda x: x in xml_cases, testrail_cases)
+        print('NOTE: the following test cases dont have result and will be '
+              'marked as "untested":\n{}'
+              .format(set(testrail_cases) - set(cases)))
+        print('NOTE: the following test cases are new for the test suite {!r}!'
+              ' Their results will be ignored:\n{}'
+              .format(tr_suite, set(xml_cases) - set(cases)))
+        self.cases = cases
 
-    def find_or_create_plan(self, plan_name):
+    def find_plan(self, plan_name):
         """Find existing or create new TestRail Plan."""
         plans = self.tr_project.plans()
-        for p in plans:
-            if p.name == plan_name:
-                plan = p
-                print 'Plan {} is found'.format(plan_name)
-                break
-        else:
-            plan = self.tr_project.plan()
-            plan.name = plan_name
-            plan.milestone = self.milestone
-            plan.project = self.project
-            plan = self.tr_project.add(plan)
-            print 'Plan {} is created'.format(plan_name)
-        return plan
+        for plan in plans:
+            if plan.name == plan_name:
+                print('Plan {} is found'.format(plan_name))
+                return plan
+        raise Exception('Plan {} is not found'.format(plan_name))
 
     def find_or_create_test_run(self, run_name):
         """Find existing or create new TestRail Run."""
@@ -129,16 +129,19 @@ class Reporter:
         tests = list(self.tr_project.tests(self.run))
 
         for test in tests:
-            status = cases_xml.get(get_test_group(test))
-            if status is None:
-                continue
-            if status not in self.statuses:
-                print('Unknown status {}. Ignoring'.format(status))
+            test_group = get_test_group(test)
+            status, comment = cases_xml.get(get_test_group(test)).items()[0]
+            if self.tr_project.status(status) is None:
+                print('NOTE: Unknown status {!r} for test cases {!r}. Ignoring'
+                      .format(status, test_group))
                 continue
 
             result = self.tr_project.result()
             result.test = test
-            result.status = self.statuses[status]
+            result.comment = comment
+            result.status = self.tr_project.status(status)
+            print('Adding result for test case {!r} : {!r}'
+                  .format(test_group, status))
 
             self.tr_project.add(result)
 
