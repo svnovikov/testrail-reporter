@@ -81,17 +81,20 @@ class Reporter:
         """Leave only those tests which are in xml."""
         testrail_cases = [get_test_group(case) for case in self.cases]
         xml_cases = cases_xml.keys()
-        cases = filter(lambda x: x in xml_cases, testrail_cases)
+        cases = filter(lambda x: get_test_group(x) in xml_cases, self.cases)
+        cases_gr = filter(lambda x: x in xml_cases, testrail_cases)
         print('NOTE: the following test cases dont have result and will be '
               'marked as "untested":\n{}'
-              .format(set(testrail_cases) - set(cases)))
+              .format(set(testrail_cases) - set(cases_gr)))
         print('NOTE: the following test cases are new for the test suite {!r}!'
               ' Their results will be ignored:\n{}'
-              .format(tr_suite, set(xml_cases) - set(cases)))
+              .format(tr_suite, set(xml_cases) - set(cases_gr)))
+        print('NOTE: the following test cases have results: \n{}'
+              .format(set(cases_gr)))
         self.cases = cases
 
     def find_plan(self, plan_name):
-        """Find existing or create new TestRail Plan."""
+        """Find existing TestRail Plan."""
         plans = self.tr_project.plans()
         for plan in plans:
             if plan.name == plan_name:
