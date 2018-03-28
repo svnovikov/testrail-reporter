@@ -49,11 +49,12 @@ class Reporter:
 
         self.suite = self.find_suite(suite_name)
         self.cases = self.tr_project.cases(self.suite)
-        self.filter_cases(cases_xml)
 
         self.plan = self.find_plan(plan_name)
         self.run = self.find_or_create_test_run(run_name)
 
+	self.tests = list(self.tr_project.tests(self.run))
+	self.filter_tests(cases_xml)
         self.add_results(cases_xml)
 
     def init_project(self, project_name):
@@ -77,21 +78,21 @@ class Reporter:
                 return m
         raise Exception('Milestone {} is not found'.format(milestone_name))
 
-    def filter_cases(self, cases_xml):
+    def filter_tests(self, cases_xml):
         """Leave only those tests which are in xml."""
-        testrail_cases = [get_test_group(case) for case in self.cases]
+        testrail_tests = [get_test_group(test) for test in self.tests]
         xml_cases = cases_xml.keys()
-        cases = filter(lambda x: get_test_group(x) in xml_cases, self.cases)
-        cases_gr = filter(lambda x: x in xml_cases, testrail_cases)
+        tests = filter(lambda x: get_test_group(x) in xml_cases, self.tests)
+        cases_gr = filter(lambda x: x in xml_cases, testrail_tests)
         print('NOTE: the following test cases dont have result and will be '
               'marked as "untested":\n{}'
-              .format(set(testrail_cases) - set(cases_gr)))
+              .format(set(testrail_tests) - set(cases_gr)))
         print('NOTE: the following test cases are new for the test suite {!r}!'
               ' Their results will be ignored:\n{}'
               .format(tr_suite, set(xml_cases) - set(cases_gr)))
         print('NOTE: the following test cases have results: \n{}'
               .format(set(cases_gr)))
-        self.cases = cases
+        self.tests = tests
 
     def find_plan(self, plan_name):
         """Find existing TestRail Plan."""
@@ -129,9 +130,8 @@ class Reporter:
         return run
 
     def add_results(self, cases_xml):
-        tests = list(self.tr_project.tests(self.run))
 
-        for test in tests:
+        for test in self.tests:
             test_group = get_test_group(test)
             status, comment = cases_xml.get(get_test_group(test)).items()[0]
             if self.tr_project.status(status) is None:
