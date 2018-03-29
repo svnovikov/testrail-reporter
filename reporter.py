@@ -53,8 +53,9 @@ class Reporter:
         self.plan = self.find_plan(plan_name)
         self.run = self.find_or_create_test_run(run_name)
 
-	self.tests = list(self.tr_project.tests(self.run))
-	self.filter_tests(cases_xml)
+        self.tests = list(self.tr_project.tests(self.run))
+        self.filter_tests(cases_xml)
+
         self.add_results(cases_xml)
 
     def init_project(self, project_name):
@@ -124,8 +125,11 @@ class Reporter:
                 'milestone_id': self.milestone.id,
                 'plan_id': self.plan.id
             }
-            run = self.plan.api.add_plan_entry(entry)
-            run = self.plan.api.get_run(run['id'])
+            self.plan.api.add_plan_entry(entry)
+            self.plan = self.find_plan(self.plan.name)
+            updated_runs = [r for entr in self.plan.entries
+                            for r in entr.runs]
+            run = filter(lambda x: x.name == run_name, updated_runs)[0]
             print 'Run {} is created'.format(run_name)
         return run
 
